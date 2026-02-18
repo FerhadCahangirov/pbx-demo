@@ -1,0 +1,26 @@
+[
+  {
+    "dn": "100",
+    "type": "Wextension",
+    "devices": [
+      {
+        "dn": "100",
+        "device_id": "deskphone_100",
+        "user_agent": "Fanvil X4U 100"
+      }
+    ],
+    "participants": []
+  },
+  {
+    "dn": "700",
+    "type": "Wroutepoint",
+    "devices": [
+      {
+        "dn": "700",
+        "device_id": "routepoint_700",
+        "user_agent": "RoutePoint Device"
+      }
+    ],
+    "participants": []
+  }
+]

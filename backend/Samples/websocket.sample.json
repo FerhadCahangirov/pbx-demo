@@ -1,0 +1,10 @@
+{
+  "sequence": 12,
+  "event": {
+    "event_type": 0,
+    "entity": "/callcontrol/100/participants/5321",
+    "attached_data": {
+      "dtmf_input": "3"
+    }
+  }
+}
