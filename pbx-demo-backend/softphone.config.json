@@ -1,0 +1,17 @@
+{
+  "Softphone": {
+    "ThreeCx": {
+      "PbxBase": "https://pbxtech.3cx.az",
+      "AppId": "itspbx",
+      "AppSecret": "zzPPsTq68irFGBgt4rJ6tu5AmtRiexub"
+    },
+    "SipWebRtc": {
+      "Enabled": true,
+      "WebSocketUrl": "wss://pbxtech.3cx.az/ws",
+      "Domain": "pbxtech.3cx.az",
+      "IceServers": [
+        "stun:pbxtech.3cx.az"  
+      ]
+    }
+  }
+}
