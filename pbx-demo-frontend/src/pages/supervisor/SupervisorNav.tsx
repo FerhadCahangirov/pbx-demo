@@ -12,7 +12,8 @@ interface NavItem {
 
 const DASHBOARD_ITEMS: NavItem[] = [
   { section: 'dashboard', label: 'Dashboard' },
-  { section: 'cdr', label: 'CDR' }
+  { section: 'cdr', label: 'CDR' },
+  { section: 'queues', label: 'Queues' }
 ];
 
 const USER_ITEMS: NavItem[] = [

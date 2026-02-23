@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { QueueSupervisorWorkspace, buildQueueRoutePath, isQueueRoutePath } from '../modules/queues';
 import type {
   CrmCallAnalyticsResponse,
   CrmCallHistoryItemResponse,
@@ -68,7 +69,9 @@ function toMessage(error: unknown, fallback: string): string {
 }
 
 export function SupervisorPage({ accessToken }: SupervisorPageProps) {
-  const [section, setSection] = useState<SupervisorSection>('dashboard');
+  const [section, setSection] = useState<SupervisorSection>(() =>
+    isQueueRoutePath(window.location.pathname) ? 'queues' : 'dashboard'
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -103,6 +106,28 @@ export function SupervisorPage({ accessToken }: SupervisorPageProps) {
     const timer = window.setTimeout(() => setNotice(null), 3000);
     return () => window.clearTimeout(timer);
   }, [notice]);
+
+  useEffect(() => {
+    const syncFromLocation = () => {
+      if (isQueueRoutePath(window.location.pathname)) {
+        setSection('queues');
+      }
+    };
+
+    window.addEventListener('popstate', syncFromLocation);
+    return () => {
+      window.removeEventListener('popstate', syncFromLocation);
+    };
+  }, []);
+
+  const changeSection = (next: SupervisorSection) => {
+    setSection(next);
+
+    if (next === 'queues' && !isQueueRoutePath(window.location.pathname)) {
+      window.history.pushState({}, '', buildQueueRoutePath('queue-list'));
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    }
+  };
 
   const refreshDirectory = async (): Promise<void> => {
     const [loadedUsers, loadedDepartments, loadedVersion] = await Promise.all([
@@ -472,6 +497,8 @@ export function SupervisorPage({ accessToken }: SupervisorPageProps) {
             onNextPage={nextCdrPage}
           />
         );
+      case 'queues':
+        return <QueueSupervisorWorkspace accessToken={accessToken} />;
       case 'users-read':
         return (
           <UserReadPage
@@ -577,7 +604,7 @@ export function SupervisorPage({ accessToken }: SupervisorPageProps) {
 
   return (
     <section className="supervisor-workspace">
-      <SupervisorNav active={section} onChange={setSection} />
+      <SupervisorNav active={section} onChange={changeSection} />
 
       <div className="supervisor-content">
         <article className="card supervisor-hero">

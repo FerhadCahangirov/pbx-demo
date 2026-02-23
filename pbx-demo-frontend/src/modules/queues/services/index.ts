@@ -12,6 +12,8 @@ import type {
   QueueAnalyticsComparisonModel,
   QueueAnalyticsOverviewModel,
   QueueAnalyticsQueryModel,
+  QueueCallHistoryItemModel,
+  QueueCallHistoryQueryModel,
   QueueLiveSnapshotModel,
   QueueListQueryModel,
   QueueModel,
@@ -29,6 +31,7 @@ export interface QueueApiClient {
   createQueue(request: CreateQueueRequestModel): Promise<QueueModel>;
   updateQueue(queueId: number, request: UpdateQueueRequestModel): Promise<QueueModel>;
   deleteQueue(queueId: number): Promise<void>;
+  getQueueCallHistory(queueId: number, query: QueueCallHistoryQueryModel): Promise<QueuePagedResult<QueueCallHistoryItemModel>>;
   getQueueLiveSnapshot(queueId: number): Promise<QueueLiveSnapshotModel>;
   publishQueueLiveSnapshot(queueId: number): Promise<QueueSnapshotPublishAcceptedModel>;
   publishQueueOutboxBatch(): Promise<QueueOutboxPublishResultModel>;
@@ -58,6 +61,9 @@ export interface QueueHubEventMap {
 export type QueueHubEventName = keyof QueueHubEventMap;
 export type QueueHubEventHandler<TEventName extends QueueHubEventName> = (message: QueueHubEventMap[TEventName]) => void;
 export type QueueSignalRConnectionListener = (snapshot: QueueSignalRConnectionSnapshot) => void;
+
+export const QUEUE_CALL_HISTORY_API_TODO_MESSAGE =
+  'TODO(BE): Missing queue call-history endpoint. Implement GET /api/queues/{queueId}/history with QueueCallHistoryQuery filters.';
 
 export interface QueueSignalRClient {
   start(): Promise<void>;
@@ -204,6 +210,11 @@ export function createQueueApiClient(accessToken: string): QueueApiClient {
     deleteQueue(queueId) {
       assertPositiveQueueId(queueId);
       return requestNoContent(`/api/queues/${queueId}`, { method: 'DELETE' }, accessToken);
+    },
+
+    async getQueueCallHistory(queueId, _query) {
+      assertPositiveQueueId(queueId);
+      throw new Error(QUEUE_CALL_HISTORY_API_TODO_MESSAGE);
     },
 
     getQueueLiveSnapshot(queueId) {

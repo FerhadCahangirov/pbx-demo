@@ -54,6 +54,8 @@ interface AssignmentPreviewProps<TItem extends { extensionNumber: string; displa
   renderExtra?: (item: TItem) => string | null;
 }
 
+type QueueEditorTab = 'initial' | 'settings';
+
 function defaultQueueSettings(): QueueSettingsModel {
   return {
     agentAvailabilityMode: false,
@@ -397,6 +399,7 @@ export function QueueCreateEditPage({ accessToken, mode, queueId, onSaved, onCan
   const [loadedQueue, setLoadedQueue] = useState<QueueModel | null>(null);
   const [pageError, setPageError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<QueueEditorTab>('initial');
   const [agentPreview, setAgentPreview] = useState<AssignmentPreviewState>({
     filter: '',
     sortBy: 'extensionNumber',
@@ -425,6 +428,7 @@ export function QueueCreateEditPage({ accessToken, mode, queueId, onSaved, onCan
     if (mode === 'create') {
       setLoadedQueue(null);
       setDraft(createDraft());
+      setActiveTab('initial');
       setPageError(null);
       return;
     }
@@ -444,6 +448,7 @@ export function QueueCreateEditPage({ accessToken, mode, queueId, onSaved, onCan
 
         setLoadedQueue(queue);
         setDraft(draftFromQueue(queue));
+        setActiveTab('initial');
         setAgentPreview((previous) => ({ ...previous, filter: '', page: 1 }));
         setManagerPreview((previous) => ({ ...previous, filter: '', page: 1 }));
         setPageError(null);
@@ -551,11 +556,13 @@ export function QueueCreateEditPage({ accessToken, mode, queueId, onSaved, onCan
   const resetForm = () => {
     if (mode === 'edit' && loadedQueue) {
       setDraft(draftFromQueue(loadedQueue));
+      setActiveTab('initial');
       setNotice('Form reset to saved queue values.');
       return;
     }
 
     setDraft(createDraft());
+    setActiveTab('initial');
     setNotice('Create form reset.');
   };
 
@@ -585,136 +592,228 @@ export function QueueCreateEditPage({ accessToken, mode, queueId, onSaved, onCan
 
       <article className="card">
         <div className="form-grid">
-          <div className="grid-two">
-            <div>
-              <label className="label" htmlFor="queue-edit-number">Queue Number</label>
-              <input
-                id="queue-edit-number"
-                className="input"
-                value={draft.queueNumber}
-                disabled={mode === 'edit'}
-                placeholder="e.g. 800"
-                onChange={(event) => setDraft((previous) => ({ ...previous, queueNumber: event.target.value }))}
-              />
-            </div>
-            <div>
-              <label className="label" htmlFor="queue-edit-name">Queue Name</label>
-              <input
-                id="queue-edit-name"
-                className="input"
-                value={draft.name}
-                placeholder="Support Queue"
-                onChange={(event) => setDraft((previous) => ({ ...previous, name: event.target.value }))}
-              />
-            </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              className={activeTab === 'initial' ? 'primary-button' : 'secondary-button'}
+              type="button"
+              onClick={() => setActiveTab('initial')}
+            >
+              Initial Properties
+            </button>
+            <button
+              className={activeTab === 'settings' ? 'primary-button' : 'secondary-button'}
+              type="button"
+              onClick={() => setActiveTab('settings')}
+            >
+              Settings
+            </button>
+            <span className="status-chip status-info">Required tabs for create/update queue workflow</span>
           </div>
 
-          <div className="grid-three">
-            <OptionalNumberField
-              id="queue-sla-time"
-              label="SLA Time (sec)"
-              value={draft.settings.slaTimeSec}
-              onChange={(value) => setSetting('slaTimeSec', value)}
-            />
-            <OptionalNumberField
-              id="queue-ring-timeout"
-              label="Ring Timeout (sec)"
-              value={draft.settings.ringTimeoutSec}
-              onChange={(value) => setSetting('ringTimeoutSec', value)}
-            />
-            <OptionalNumberField
-              id="queue-max-callers"
-              label="Max Callers In Queue"
-              value={draft.settings.maxCallersInQueue}
-              onChange={(value) => setSetting('maxCallersInQueue', value)}
-            />
-          </div>
+          {activeTab === 'initial' && (
+            <>
+              <div className="grid-two">
+                <div>
+                  <label className="label" htmlFor="queue-edit-number">Queue Number</label>
+                  <input
+                    id="queue-edit-number"
+                    className="input"
+                    value={draft.queueNumber}
+                    disabled={mode === 'edit'}
+                    placeholder="e.g. 800"
+                    onChange={(event) => setDraft((previous) => ({ ...previous, queueNumber: event.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="label" htmlFor="queue-edit-name">Queue Name</label>
+                  <input
+                    id="queue-edit-name"
+                    className="input"
+                    value={draft.name}
+                    placeholder="Support Queue"
+                    onChange={(event) => setDraft((previous) => ({ ...previous, name: event.target.value }))}
+                  />
+                </div>
+              </div>
 
-          <div className="grid-three">
-            <OptionalNumberField
-              id="queue-wrapup-time"
-              label="Wrap Up Time (sec)"
-              value={draft.settings.wrapUpTimeSec}
-              onChange={(value) => setSetting('wrapUpTimeSec', value)}
-            />
-            <OptionalNumberField
-              id="queue-master-timeout"
-              label="Master Timeout (sec)"
-              value={draft.settings.masterTimeoutSec}
-              onChange={(value) => setSetting('masterTimeoutSec', value)}
-            />
-            <OptionalNumberField
-              id="queue-announcement-interval"
-              label="Announcement Interval (sec)"
-              value={draft.settings.announcementIntervalSec}
-              onChange={(value) => setSetting('announcementIntervalSec', value)}
-            />
-          </div>
+              <div className="grid-two">
+                <div>
+                  <label className="label" htmlFor="queue-notify-codes">Notify Codes</label>
+                  <input
+                    id="queue-notify-codes"
+                    className="input"
+                    value={draft.notifyCodesText}
+                    placeholder="Comma separated"
+                    onChange={(event) => setDraft((previous) => ({ ...previous, notifyCodesText: event.target.value }))}
+                  />
+                </div>
+                <div className="rounded-2xl border border-border bg-white/80 p-3 text-sm text-muted">
+                  <p className="font-semibold text-ink">Initial Properties Notes</p>
+                  <p className="mt-1">
+                    Queue number is immutable in edit mode because the backend update API (`PATCH /api/queues/{'{'}id{'}'}`) updates queue
+                    settings/name but does not support queue number mutation.
+                  </p>
+                </div>
+              </div>
 
-          <div className="grid-three">
-            <div>
-              <label className="label" htmlFor="queue-notify-codes">Notify Codes</label>
-              <input
-                id="queue-notify-codes"
-                className="input"
-                value={draft.notifyCodesText}
-                placeholder="Comma separated"
-                onChange={(event) => setDraft((previous) => ({ ...previous, notifyCodesText: event.target.value }))}
-              />
-            </div>
-            <div>
-              <label className="label" htmlFor="queue-recording-mode">Recording Mode</label>
-              <input
-                id="queue-recording-mode"
-                className="input"
-                value={draft.settings.recordingMode ?? ''}
-                placeholder="Optional"
-                onChange={(event) => setSetting('recordingMode', event.target.value.trim() || null)}
-              />
-            </div>
-            <div>
-              <label className="label" htmlFor="queue-polling-strategy">Polling Strategy</label>
-              <input
-                id="queue-polling-strategy"
-                className="input"
-                value={draft.settings.pollingStrategy ?? ''}
-                placeholder="Optional"
-                onChange={(event) => setSetting('pollingStrategy', event.target.value.trim() || null)}
-              />
-            </div>
-          </div>
+              {mode === 'edit' && (
+                <div className="grid-two">
+                  <CheckboxField
+                    label="Replace Agents On Update"
+                    checked={draft.replaceAgents}
+                    onChange={(checked) => setDraft((previous) => ({ ...previous, replaceAgents: checked }))}
+                  />
+                  <CheckboxField
+                    label="Replace Managers On Update"
+                    checked={draft.replaceManagers}
+                    onChange={(checked) => setDraft((previous) => ({ ...previous, replaceManagers: checked }))}
+                  />
+                </div>
+              )}
+            </>
+          )}
 
-          <div className="grid-three">
-            <CheckboxField
-              label="Announce Queue Position"
-              checked={Boolean(draft.settings.announceQueuePosition)}
-              onChange={(checked) => setSetting('announceQueuePosition', checked)}
-            />
-            <CheckboxField
-              label="Play Full Prompt"
-              checked={Boolean(draft.settings.playFullPrompt)}
-              onChange={(checked) => setSetting('playFullPrompt', checked)}
-            />
-            <CheckboxField
-              label="Priority Queue"
-              checked={Boolean(draft.settings.priorityQueue)}
-              onChange={(checked) => setSetting('priorityQueue', checked)}
-            />
-          </div>
+          {activeTab === 'settings' && (
+            <>
+              <div className="grid-three">
+                <OptionalNumberField
+                  id="queue-sla-time"
+                  label="SLA Time (sec)"
+                  value={draft.settings.slaTimeSec}
+                  onChange={(value) => setSetting('slaTimeSec', value)}
+                />
+                <OptionalNumberField
+                  id="queue-ring-timeout"
+                  label="Ring Timeout (sec)"
+                  value={draft.settings.ringTimeoutSec}
+                  onChange={(value) => setSetting('ringTimeoutSec', value)}
+                />
+                <OptionalNumberField
+                  id="queue-max-callers"
+                  label="Max Callers In Queue"
+                  value={draft.settings.maxCallersInQueue}
+                  onChange={(value) => setSetting('maxCallersInQueue', value)}
+                />
+              </div>
 
-          {mode === 'edit' && (
-            <div className="grid-two">
-              <CheckboxField
-                label="Replace Agents On Update"
-                checked={draft.replaceAgents}
-                onChange={(checked) => setDraft((previous) => ({ ...previous, replaceAgents: checked }))}
-              />
-              <CheckboxField
-                label="Replace Managers On Update"
-                checked={draft.replaceManagers}
-                onChange={(checked) => setDraft((previous) => ({ ...previous, replaceManagers: checked }))}
-              />
-            </div>
+              <div className="grid-three">
+                <OptionalNumberField
+                  id="queue-wrapup-time"
+                  label="Wrap Up Time (sec)"
+                  value={draft.settings.wrapUpTimeSec}
+                  onChange={(value) => setSetting('wrapUpTimeSec', value)}
+                />
+                <OptionalNumberField
+                  id="queue-master-timeout"
+                  label="Master Timeout (sec)"
+                  value={draft.settings.masterTimeoutSec}
+                  onChange={(value) => setSetting('masterTimeoutSec', value)}
+                />
+                <OptionalNumberField
+                  id="queue-announcement-interval"
+                  label="Announcement Interval (sec)"
+                  value={draft.settings.announcementIntervalSec}
+                  onChange={(value) => setSetting('announcementIntervalSec', value)}
+                />
+              </div>
+
+              <div className="grid-three">
+                <OptionalNumberField
+                  id="queue-callback-enable-time"
+                  label="Callback Enable Time (sec)"
+                  value={draft.settings.callbackEnableTimeSec}
+                  onChange={(value) => setSetting('callbackEnableTimeSec', value)}
+                />
+                <div>
+                  <label className="label" htmlFor="queue-callback-prefix">Callback Prefix</label>
+                  <input
+                    id="queue-callback-prefix"
+                    className="input"
+                    value={draft.settings.callbackPrefix ?? ''}
+                    placeholder="Optional"
+                    onChange={(event) => setSetting('callbackPrefix', event.target.value.trim() || null)}
+                  />
+                </div>
+                <div>
+                  <label className="label" htmlFor="queue-prompt-set">Prompt Set</label>
+                  <input
+                    id="queue-prompt-set"
+                    className="input"
+                    value={draft.settings.promptSet ?? ''}
+                    placeholder="Optional"
+                    onChange={(event) => setSetting('promptSet', event.target.value.trim() || null)}
+                  />
+                </div>
+              </div>
+
+              <div className="grid-three">
+                <div>
+                  <label className="label" htmlFor="queue-recording-mode">Recording Mode</label>
+                  <input
+                    id="queue-recording-mode"
+                    className="input"
+                    value={draft.settings.recordingMode ?? ''}
+                    placeholder="Optional"
+                    onChange={(event) => setSetting('recordingMode', event.target.value.trim() || null)}
+                  />
+                </div>
+                <div>
+                  <label className="label" htmlFor="queue-polling-strategy">Polling Strategy</label>
+                  <input
+                    id="queue-polling-strategy"
+                    className="input"
+                    value={draft.settings.pollingStrategy ?? ''}
+                    placeholder="Optional"
+                    onChange={(event) => setSetting('pollingStrategy', event.target.value.trim() || null)}
+                  />
+                </div>
+                <div>
+                  <label className="label" htmlFor="queue-greeting-file">Greeting File</label>
+                  <input
+                    id="queue-greeting-file"
+                    className="input"
+                    value={draft.settings.greetingFile ?? ''}
+                    placeholder="Optional"
+                    onChange={(event) => setSetting('greetingFile', event.target.value.trim() || null)}
+                  />
+                </div>
+              </div>
+
+              <div className="grid-three">
+                <CheckboxField
+                  label="Agent Availability Mode"
+                  checked={Boolean(draft.settings.agentAvailabilityMode)}
+                  onChange={(checked) => setSetting('agentAvailabilityMode', checked)}
+                />
+                <CheckboxField
+                  label="Announce Queue Position"
+                  checked={Boolean(draft.settings.announceQueuePosition)}
+                  onChange={(checked) => setSetting('announceQueuePosition', checked)}
+                />
+                <CheckboxField
+                  label="Enable Intro"
+                  checked={Boolean(draft.settings.enableIntro)}
+                  onChange={(checked) => setSetting('enableIntro', checked)}
+                />
+              </div>
+
+              <div className="grid-three">
+                <CheckboxField
+                  label="Play Full Prompt"
+                  checked={Boolean(draft.settings.playFullPrompt)}
+                  onChange={(checked) => setSetting('playFullPrompt', checked)}
+                />
+                <CheckboxField
+                  label="Priority Queue"
+                  checked={Boolean(draft.settings.priorityQueue)}
+                  onChange={(checked) => setSetting('priorityQueue', checked)}
+                />
+                <div className="rounded-2xl border border-border bg-white/80 p-3 text-sm text-muted">
+                  Additional routing destinations (break/holiday/out-of-office) are supported by backend contracts and can be added as a
+                  future form enhancement.
+                </div>
+              </div>
+            </>
           )}
         </div>
       </article>

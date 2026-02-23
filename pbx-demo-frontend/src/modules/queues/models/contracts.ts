@@ -60,6 +60,26 @@ export interface QueueCallHistoryQueryModel {
   pageSize: number;
 }
 
+// TODO(BE): Add queue call history endpoint and align this model to the actual backend response.
+// Proposed route: GET /api/queues/{queueId}/history
+export interface QueueCallHistoryItemModel {
+  id: string;
+  queueId: number;
+  queueCallId?: number | null;
+  callerNumber?: string | null;
+  callerName?: string | null;
+  callType?: string | null;
+  callStartUtc: string;
+  callEndUtc?: string | null;
+  durationMs?: number | null;
+  waitMs?: number | null;
+  agentId?: number | null;
+  agentExtension?: string | null;
+  agentDisplayName?: string | null;
+  outcome?: string | null;
+  disposition?: string | null;
+}
+
 export interface QueueAnalyticsQueryModel {
   fromUtc: string;
   toUtc: string;

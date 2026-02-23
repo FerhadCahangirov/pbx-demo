@@ -2,6 +2,7 @@ export type QueueRouteId =
   | 'queue-list'
   | 'queue-create'
   | 'queue-details'
+  | 'queue-update'
   | 'queue-live-monitor'
   | 'queue-analytics'
   | 'queue-call-history'
@@ -54,6 +55,14 @@ const queueRouteDefinitionsInternal: QueueRouteDefinition[] = [
     title: 'Queue Details',
     pathTemplate: `${QUEUE_ROUTE_PREFIX}/:queueId`,
     pathPattern: /^\/supervisor\/queues\/(?<queueId>\d+)\/?$/i,
+    pageBatch: 10,
+    requiresQueueId: true
+  },
+  {
+    id: 'queue-update',
+    title: 'Update Queue',
+    pathTemplate: `${QUEUE_ROUTE_PREFIX}/:queueId/edit`,
+    pathPattern: /^\/supervisor\/queues\/(?<queueId>\d+)\/edit\/?$/i,
     pageBatch: 10,
     requiresQueueId: true
   },
@@ -159,6 +168,11 @@ export function createQueueNavigationItems(defaultQueueId?: number | null): Queu
       id: 'queue-analytics',
       label: 'Queue Analytics',
       href: queueId ? buildQueueRoutePath('queue-analytics', { queueId }) : buildQueueRoutePath('queue-list')
+    },
+    {
+      id: 'queue-call-history',
+      label: 'Call History',
+      href: queueId ? buildQueueRoutePath('queue-call-history', { queueId }) : buildQueueRoutePath('queue-list')
     },
     { id: 'queue-agent-activity', label: 'Agent Activity', href: buildQueueRoutePath('queue-agent-activity') },
     { id: 'queue-sla-dashboard', label: 'SLA Dashboard', href: buildQueueRoutePath('queue-sla-dashboard') }

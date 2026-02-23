@@ -43,6 +43,7 @@ export interface CdrMetaState {
 export type SupervisorSection =
   | 'dashboard'
   | 'cdr'
+  | 'queues'
   | 'users-read'
   | 'users-create'
   | 'users-update'

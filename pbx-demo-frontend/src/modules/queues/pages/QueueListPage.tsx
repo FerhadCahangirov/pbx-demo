@@ -13,6 +13,7 @@ interface QueueListPageProps {
   onOpenQueueDetails?: (queueId: number) => void;
   onOpenLiveMonitoring?: (queueId: number) => void;
   onOpenAnalytics?: (queueId: number) => void;
+  onOpenCallHistory?: (queueId: number) => void;
 }
 
 type RegistrationFilterValue = 'all' | 'registered' | 'unregistered';
@@ -104,7 +105,8 @@ export function QueueListPage({
   onEditQueue,
   onOpenQueueDetails,
   onOpenLiveMonitoring,
-  onOpenAnalytics
+  onOpenAnalytics,
+  onOpenCallHistory
 }: QueueListPageProps) {
   const queueList = useQueueStore((state) => state.queueList);
   const activeQuery = useQueueStore((state) => state.queueListQuery);
@@ -533,15 +535,18 @@ export function QueueListPage({
                     )
                   }
                 >
-                  Details
+                  View
                 </button>
                 <button
                   className="secondary-button"
                   type="button"
-                  onClick={() => {
-                    setActiveQueueId(queue.id);
-                    onEditQueue?.(queue.id);
-                  }}
+                  onClick={() =>
+                    navigateWithFallback(
+                      onEditQueue,
+                      buildQueueRoutePath('queue-update', { queueId: queue.id }),
+                      queue.id
+                    )
+                  }
                 >
                   Edit
                 </button>
@@ -570,6 +575,19 @@ export function QueueListPage({
                   }
                 >
                   Analytics
+                </button>
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={() =>
+                    navigateWithFallback(
+                      onOpenCallHistory,
+                      buildQueueRoutePath('queue-call-history', { queueId: queue.id }),
+                      queue.id
+                    )
+                  }
+                >
+                  History
                 </button>
                 <button className="danger-button" type="button" onClick={() => void deleteQueue(queue)} disabled={requests.queueMutation.loading}>
                   Delete
