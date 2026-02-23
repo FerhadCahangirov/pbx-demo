@@ -12,6 +12,7 @@ public sealed class ActiveCallsPollingWorker : BackgroundService
 {
     private const string CheckpointStreamName = "Queue.ActiveCallsPolling";
     private const string CheckpointPartitionKey = "global";
+    private const int XapiActiveCallsTopLimit = 100;
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IOptionsMonitor<QueueIngestionOptions> _optionsMonitor;
@@ -74,7 +75,7 @@ public sealed class ActiveCallsPollingWorker : BackgroundService
 
         var query = new QueueODataQuery
         {
-            Top = Math.Max(1, options.ActiveCallsTop),
+            Top = Math.Clamp(options.ActiveCallsTop, 1, XapiActiveCallsTopLimit),
             OrderBy = ["Id asc"]
         };
 

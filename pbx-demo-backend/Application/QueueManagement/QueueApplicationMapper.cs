@@ -104,6 +104,11 @@ public sealed class QueueApplicationMapper
             AnnounceQueuePosition = settings.AnnounceQueuePosition,
             CallbackEnableTimeSec = settings.CallbackEnableTimeSec,
             CallbackPrefix = settings.CallbackPrefix,
+            CallUsEnableChat = settings.CallUsEnableChat,
+            CallUsEnablePhone = settings.CallUsEnablePhone,
+            CallUsEnableVideo = settings.CallUsEnableVideo,
+            CallUsRequirement = settings.CallUsRequirement,
+            ClickToCallId = settings.ClickToCallId,
             EnableIntro = settings.EnableIntro,
             GreetingFile = settings.GreetingFile,
             IntroFile = settings.IntroFile,
@@ -126,6 +131,8 @@ public sealed class QueueApplicationMapper
                 DayOfWeek = settings.ResetStatsDayOfWeek,
                 Time = settings.ResetStatsTime
             },
+            TranscriptionMode = settings.TranscriptionMode,
+            TypeOfChatOwnershipType = settings.ChatOwnershipType,
             BreakRoute = DeserializeRoute(settings.BreakRouteJson),
             HolidaysRoute = DeserializeRoute(settings.HolidaysRouteJson),
             OutOfOfficeRoute = DeserializeRoute(settings.OutOfOfficeRouteJson),
@@ -290,6 +297,11 @@ public sealed class QueueApplicationMapper
         xapi.AnnounceQueuePosition = settings.AnnounceQueuePosition;
         xapi.CallbackEnableTime = settings.CallbackEnableTimeSec;
         xapi.CallbackPrefix = Trim(settings.CallbackPrefix);
+        xapi.CallUsEnableChat = settings.CallUsEnableChat;
+        xapi.CallUsEnablePhone = settings.CallUsEnablePhone;
+        xapi.CallUsEnableVideo = settings.CallUsEnableVideo;
+        xapi.CallUsRequirement = ParseEnumOrNull<XapiPbxAuthentication>(settings.CallUsRequirement, nameof(settings.CallUsRequirement));
+        xapi.ClickToCallId = Trim(settings.ClickToCallId);
         xapi.EnableIntro = settings.EnableIntro;
         xapi.GreetingFile = Trim(settings.GreetingFile);
         xapi.IntroFile = Trim(settings.IntroFile);
@@ -319,6 +331,8 @@ public sealed class QueueApplicationMapper
         xapi.HolidaysRoute = MapRouteToXapi(settings.HolidaysRoute);
         xapi.OutOfOfficeRoute = MapRouteToXapi(settings.OutOfOfficeRoute);
         xapi.ForwardNoAnswer = MapDestinationToXapi(settings.ForwardNoAnswer);
+        xapi.TranscriptionMode = ParseEnumOrNull<XapiPbxTranscriptionType>(settings.TranscriptionMode, nameof(settings.TranscriptionMode));
+        xapi.TypeOfChatOwnershipType = ParseEnumOrNull<XapiPbxTypeOfChatOwnershipType>(settings.TypeOfChatOwnershipType, nameof(settings.TypeOfChatOwnershipType));
     }
 
     private static List<XapiPbxQueueNotifyCode> MapNotifyCodes(IEnumerable<string>? values)

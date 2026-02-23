@@ -6,7 +6,8 @@ namespace CallControl.Api.Infrastructure.QueueManagement.Xapi;
 public static class QueueXapiODataQueryBuilder
 {
     public static string FormatDateTimeOffsetUtc(DateTimeOffset value)
-        => value.UtcDateTime.ToString("O");
+        // 3CX XAPI/OData endpoints are more reliable with millisecond precision than full tick precision.
+        => value.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fff'Z'");
 
     public static string EscapeODataStringLiteral(string value)
     {

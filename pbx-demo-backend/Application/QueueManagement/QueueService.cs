@@ -338,7 +338,7 @@ public sealed class QueueService : IQueueService
         int? pbxUserId,
         string? extensionNumber,
         string? displayName,
-        IReadOnlyDictionary<string, ExtensionEntity> extensionsByNumber,
+        IDictionary<string, ExtensionEntity> extensionsByNumber,
         CancellationToken ct)
     {
         var normalizedNumber = extensionNumber?.Trim();
@@ -357,6 +357,20 @@ public sealed class QueueService : IQueueService
             return existing;
         }
 
+        var byNumber = await _db.Extensions
+            .FirstOrDefaultAsync(x => x.ExtensionNumber == normalizedNumber, ct);
+
+        if (byNumber is not null)
+        {
+            if (!string.IsNullOrWhiteSpace(displayName) && string.IsNullOrWhiteSpace(byNumber.DisplayName))
+            {
+                byNumber.DisplayName = displayName.Trim();
+            }
+
+            extensionsByNumber[normalizedNumber] = byNumber;
+            return byNumber;
+        }
+
         if (pbxUserId is null)
         {
             return null;
@@ -368,6 +382,7 @@ public sealed class QueueService : IQueueService
         {
             byPbxId.ExtensionNumber = normalizedNumber;
             byPbxId.DisplayName ??= string.IsNullOrWhiteSpace(displayName) ? null : displayName.Trim();
+            extensionsByNumber[normalizedNumber] = byPbxId;
             return byPbxId;
         }
 
@@ -382,7 +397,36 @@ public sealed class QueueService : IQueueService
         };
 
         _db.Extensions.Add(created);
-        await _db.SaveChangesAsync(ct);
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex)
+        {
+            // Another request/loop iteration may have inserted the same extension number concurrently.
+            _db.Entry(created).State = EntityState.Detached;
+
+            var concurrentByNumber = await _db.Extensions
+                .FirstOrDefaultAsync(x => x.ExtensionNumber == normalizedNumber, ct);
+            if (concurrentByNumber is not null)
+            {
+                if (!string.IsNullOrWhiteSpace(displayName) && string.IsNullOrWhiteSpace(concurrentByNumber.DisplayName))
+                {
+                    concurrentByNumber.DisplayName = displayName.Trim();
+                }
+
+                extensionsByNumber[normalizedNumber] = concurrentByNumber;
+                _logger.LogWarning(
+                    ex,
+                    "Recovered from duplicate QueueExtension insert for extension number {ExtensionNumber} by loading the existing row.",
+                    normalizedNumber);
+                return concurrentByNumber;
+            }
+
+            throw;
+        }
+
+        extensionsByNumber[normalizedNumber] = created;
         return created;
     }
 
@@ -391,8 +435,8 @@ public sealed class QueueService : IQueueService
         var queue = await _xapiClient.GetQueueAsync(pbxQueueId, select: null, expand: null, ct)
             ?? throw new NotFoundException($"3CX queue {pbxQueueId} was not found.");
 
-        var agents = await _xapiClient.ListQueueAgentsAsync(pbxQueueId, new QueueODataQuery { Top = 1000, OrderBy = ["Number asc"] }, ct);
-        var managers = await _xapiClient.ListQueueManagersAsync(pbxQueueId, new QueueODataQuery { Top = 1000, OrderBy = ["Number asc"] }, ct);
+        var agents = await _xapiClient.ListQueueAgentsAsync(pbxQueueId, new QueueODataQuery { Top = 100, OrderBy = ["Number asc"] }, ct);
+        var managers = await _xapiClient.ListQueueManagersAsync(pbxQueueId, new QueueODataQuery { Top = 100, OrderBy = ["Number asc"] }, ct);
 
         return new QueueXapiQueueReadModel
         {
@@ -488,4 +532,3 @@ internal sealed class QueueMembershipDesiredState
     public bool IsAgentMember { get; set; }
     public bool IsQueueManager { get; set; }
 }
-

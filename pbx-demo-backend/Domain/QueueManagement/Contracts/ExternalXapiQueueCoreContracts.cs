@@ -175,10 +175,37 @@ public sealed class XapiPbxQueueManagerDto
 
 public sealed class XapiPbxUserGroupProjectionDto
 {
+    public bool? CanDelete { get; set; }
+    public int? GroupId { get; set; }
+    public XapiPbxGroupRightsDto? GroupRights { get; set; }
     public int? Id { get; set; }
+    public string? MemberName { get; set; }
     public string? Name { get; set; }
     public string? Number { get; set; }
+    public XapiPbxGroupRightsDto? Rights { get; set; }
     public List<XapiPbxUserTag>? Tags { get; set; }
+    public XapiPbxTranscriptionType? TranscriptionMode { get; set; }
+    public XapiPbxPeerType? Type { get; set; }
+}
+
+public sealed class XapiPbxGroupRightsDto
+{
+    public bool? AllowIVR { get; set; }
+    public bool? AllowParking { get; set; }
+    public bool? AllowToChangePresence { get; set; }
+    public bool? AllowToManageCompanyBook { get; set; }
+    public bool? AssignClearOperations { get; set; }
+    public bool? CanBargeIn { get; set; }
+    public bool? CanIntercom { get; set; }
+    public bool? CanSeeGroupCalls { get; set; }
+    public bool? CanSeeGroupMembers { get; set; }
+    public bool? CanSeeGroupRecordings { get; set; }
+    public bool? Invalid { get; set; }
+    public bool? PerformOperations { get; set; }
+    public string? RoleName { get; set; }
+    public bool? ShowMyCalls { get; set; }
+    public bool? ShowMyPresence { get; set; }
+    public bool? ShowMyPresenceOutside { get; set; }
 }
 
 public sealed class XapiPbxDestinationDto

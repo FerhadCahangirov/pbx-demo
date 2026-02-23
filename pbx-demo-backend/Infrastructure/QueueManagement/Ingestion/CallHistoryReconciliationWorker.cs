@@ -12,6 +12,9 @@ public sealed class CallHistoryReconciliationWorker : BackgroundService
 {
     private const string CheckpointStreamName = "Queue.CallHistoryViewReconciliation";
     private const string CheckpointPartitionKey = "global";
+    private const int XapiCallHistoryTopLimit = 100;
+    private const int MaxCallHistoryWindowSplitDepth = 12;
+    private static readonly TimeSpan MinCallHistoryWindowSpan = TimeSpan.FromSeconds(30);
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IOptionsMonitor<QueueIngestionOptions> _optionsMonitor;
@@ -88,8 +91,7 @@ public sealed class CallHistoryReconciliationWorker : BackgroundService
         var fromUtc = checkpointCursorUtc.Subtract(lookback);
         var toUtc = nowUtc;
 
-        var pageSize = Math.Max(1, options.ReconciliationPageSize);
-        var skip = 0;
+        var pageSize = Math.Clamp(options.ReconciliationPageSize, 1, XapiCallHistoryTopLimit);
         var maxObservedCursorUtc = checkpointCursorUtc;
         var queues = await db.Queues
             .IgnoreQueryFilters()
@@ -97,57 +99,7 @@ public sealed class CallHistoryReconciliationWorker : BackgroundService
             .ToListAsync(ct);
         var queueIdsByNumber = queues.ToDictionary(x => x.QueueNumber, x => x.Id, StringComparer.OrdinalIgnoreCase);
 
-        while (!ct.IsCancellationRequested)
-        {
-            var query = new QueueODataQuery
-            {
-                Top = pageSize,
-                Skip = skip,
-                OrderBy = ["SegmentEndTime asc", "SegmentId asc"],
-                Filter = BuildCallHistoryWindowFilter(fromUtc, toUtc)
-            };
-
-            var response = await xapiClient.ListCallHistoryViewAsync(query, ct);
-            var rows = (response.Value ?? [])
-                .OrderBy(x => x.SegmentEndTime)
-                .ThenBy(x => x.SegmentId)
-                .ToList();
-
-            if (rows.Count == 0)
-            {
-                break;
-            }
-
-            var observedAtUtc = DateTimeOffset.UtcNow;
-            var envelopes = new List<QueueInboundEventEnvelope>(rows.Count);
-
-            foreach (var row in rows)
-            {
-                var queueIdHint = mapper.ResolveQueueId(row, queueIdsByNumber);
-
-                if (!mapper.IsLikelyDuplicateCallHistoryRow(db, row))
-                {
-                    db.QueueCallHistory.Add(mapper.MapCallHistoryViewRow(row, queueIdHint, observedAtUtc));
-                }
-
-                envelopes.Add(mapper.MapCallHistoryViewEnvelope(row, queueIdHint, observedAtUtc));
-                if (row.SegmentEndTime > maxObservedCursorUtc)
-                {
-                    maxObservedCursorUtc = row.SegmentEndTime;
-                }
-            }
-
-            if (envelopes.Count > 0)
-            {
-                await eventProcessor.ProcessBatchAsync(envelopes, ct);
-            }
-
-            skip += rows.Count;
-            if (rows.Count < pageSize)
-            {
-                break;
-            }
-        }
+        await ReconcileWindowAsync(fromUtc, toUtc, splitDepth: 0);
 
         checkpoint ??= new XapiSyncCheckpointEntity
         {
@@ -165,6 +117,119 @@ public sealed class CallHistoryReconciliationWorker : BackgroundService
         checkpoint.UpdatedAtUtc = nowUtc;
 
         await db.SaveChangesAsync(ct);
+
+        async Task ReconcileWindowAsync(DateTimeOffset windowFromUtc, DateTimeOffset windowToUtc, int splitDepth)
+        {
+            if (ct.IsCancellationRequested || windowToUtc <= windowFromUtc)
+            {
+                return;
+            }
+
+            try
+            {
+                await ReconcileWindowPagesAsync(windowFromUtc, windowToUtc);
+                return;
+            }
+            catch (CallControl.Api.Domain.UpstreamApiException ex)
+            {
+                var windowSpan = windowToUtc - windowFromUtc;
+                var canSplit = ex.ErrorCode >= 500
+                    && ex.ErrorCode <= 599
+                    && splitDepth < MaxCallHistoryWindowSplitDepth
+                    && windowSpan > MinCallHistoryWindowSpan;
+
+                if (canSplit)
+                {
+                    var halfTicks = Math.Max(1, windowSpan.Ticks / 2);
+                    var splitAtUtc = windowFromUtc.AddTicks(halfTicks);
+                    if (splitAtUtc <= windowFromUtc || splitAtUtc >= windowToUtc)
+                    {
+                        canSplit = false;
+                    }
+                    else
+                    {
+                        _logger.LogWarning(
+                            ex,
+                            "CallHistoryView reconciliation query failed for window {FromUtc:o}..{ToUtc:o}; splitting into smaller windows at depth {SplitDepth}.",
+                            windowFromUtc,
+                            windowToUtc,
+                            splitDepth);
+
+                        await ReconcileWindowAsync(windowFromUtc, splitAtUtc, splitDepth + 1);
+                        await ReconcileWindowAsync(splitAtUtc, windowToUtc, splitDepth + 1);
+                        return;
+                    }
+                }
+
+                _logger.LogError(
+                    ex,
+                    "Skipping CallHistoryView reconciliation window {FromUtc:o}..{ToUtc:o} after retries/splitting to keep worker progressing.",
+                    windowFromUtc,
+                    windowToUtc);
+
+                // Advance the checkpoint boundary past irreducible upstream failures to avoid retrying the same broken shard forever.
+                if (windowToUtc > maxObservedCursorUtc)
+                {
+                    maxObservedCursorUtc = windowToUtc;
+                }
+            }
+        }
+
+        async Task ReconcileWindowPagesAsync(DateTimeOffset windowFromUtc, DateTimeOffset windowToUtc)
+        {
+            var skip = 0;
+            while (!ct.IsCancellationRequested)
+            {
+                var query = new QueueODataQuery
+                {
+                    Top = pageSize,
+                    Skip = skip,
+                    OrderBy = ["SegmentEndTime asc", "SegmentId asc"],
+                    Filter = BuildCallHistoryWindowFilter(windowFromUtc, windowToUtc)
+                };
+
+                var response = await xapiClient.ListCallHistoryViewAsync(query, ct);
+                var rows = (response.Value ?? [])
+                    .OrderBy(x => x.SegmentEndTime)
+                    .ThenBy(x => x.SegmentId)
+                    .ToList();
+
+                if (rows.Count == 0)
+                {
+                    break;
+                }
+
+                var observedAtUtc = DateTimeOffset.UtcNow;
+                var envelopes = new List<QueueInboundEventEnvelope>(rows.Count);
+
+                foreach (var row in rows)
+                {
+                    var queueIdHint = mapper.ResolveQueueId(row, queueIdsByNumber);
+
+                    if (!mapper.IsLikelyDuplicateCallHistoryRow(db, row))
+                    {
+                        db.QueueCallHistory.Add(mapper.MapCallHistoryViewRow(row, queueIdHint, observedAtUtc));
+                    }
+
+                    envelopes.Add(mapper.MapCallHistoryViewEnvelope(row, queueIdHint, observedAtUtc));
+                    if (row.SegmentEndTime > maxObservedCursorUtc)
+                    {
+                        maxObservedCursorUtc = row.SegmentEndTime;
+                    }
+                }
+
+                if (envelopes.Count > 0)
+                {
+                    await eventProcessor.ProcessBatchAsync(envelopes, ct);
+                }
+
+                skip += rows.Count;
+                if (rows.Count < pageSize)
+                {
+                    break;
+                }
+            }
+        }
     }
 
     private static string BuildCallHistoryWindowFilter(DateTimeOffset fromUtc, DateTimeOffset toUtc)

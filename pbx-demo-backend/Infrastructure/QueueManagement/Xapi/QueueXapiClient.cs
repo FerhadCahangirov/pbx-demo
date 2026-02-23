@@ -12,6 +12,8 @@ namespace CallControl.Api.Infrastructure.QueueManagement.Xapi;
 public sealed class QueueXapiClient : IQueueXapiClient
 {
     private static readonly JsonSerializerOptions SerializerOptions = CreateSerializerOptions();
+    private const int ActiveCallsTopLimit = 100;
+    private const int CallHistoryViewTopLimit = 100;
 
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IQueueXapiAccessTokenProvider _tokenProvider;
@@ -103,10 +105,68 @@ public sealed class QueueXapiClient : IQueueXapiClient
         => SendNoContentAsync(HttpMethod.Post, $"/Queues({queueId})/Pbx.ResetQueueStatistics", payload: null, ifMatch: null, ct);
 
     public Task<XapiODataCollectionResponse<XapiPbxActiveCallDto>> ListActiveCallsAsync(QueueODataQuery query, CancellationToken ct)
-        => GetODataCollectionAsync<XapiPbxActiveCallDto>("/ActiveCalls", query, ct);
+    {
+        query ??= new QueueODataQuery();
+
+        var requestedTop = query.Top;
+        var clampedTop = requestedTop.HasValue
+            ? Math.Clamp(requestedTop.Value, 1, ActiveCallsTopLimit)
+            : (int?)null;
+
+        if (requestedTop.HasValue && requestedTop.Value != clampedTop)
+        {
+            _logger.LogWarning(
+                "Clamping /ActiveCalls $top from {RequestedTop} to {ClampedTop} to satisfy 3CX XAPI limit.",
+                requestedTop.Value,
+                clampedTop);
+        }
+
+        var sanitizedQuery = new QueueODataQuery
+        {
+            Top = clampedTop,
+            Skip = query.Skip,
+            Search = query.Search,
+            Filter = query.Filter,
+            Count = query.Count,
+            OrderBy = query.OrderBy?.ToList() ?? [],
+            Select = query.Select?.ToList() ?? [],
+            Expand = query.Expand?.ToList() ?? []
+        };
+
+        return GetODataCollectionAsync<XapiPbxActiveCallDto>("/ActiveCalls", sanitizedQuery, ct);
+    }
 
     public Task<XapiODataCollectionResponse<XapiPbxCallHistoryViewDto>> ListCallHistoryViewAsync(QueueODataQuery query, CancellationToken ct)
-        => GetODataCollectionAsync<XapiPbxCallHistoryViewDto>("/CallHistoryView", query, ct);
+    {
+        query ??= new QueueODataQuery();
+
+        var requestedTop = query.Top;
+        var clampedTop = requestedTop.HasValue
+            ? Math.Clamp(requestedTop.Value, 1, CallHistoryViewTopLimit)
+            : (int?)null;
+
+        if (requestedTop.HasValue && requestedTop.Value != clampedTop)
+        {
+            _logger.LogWarning(
+                "Clamping /CallHistoryView $top from {RequestedTop} to {ClampedTop} to improve 3CX XAPI compatibility.",
+                requestedTop.Value,
+                clampedTop);
+        }
+
+        var sanitizedQuery = new QueueODataQuery
+        {
+            Top = clampedTop,
+            Skip = query.Skip,
+            Search = query.Search,
+            Filter = query.Filter,
+            Count = query.Count,
+            OrderBy = query.OrderBy?.ToList() ?? [],
+            Select = query.Select?.ToList() ?? [],
+            Expand = query.Expand?.ToList() ?? []
+        };
+
+        return GetODataCollectionAsync<XapiPbxCallHistoryViewDto>("/CallHistoryView", sanitizedQuery, ct);
+    }
 
     public Task<XapiODataCollectionResponse<XapiPbxCallLogDataDto>> GetCallLogDataAsync(
         string relativeFunctionPath,

@@ -97,6 +97,11 @@ public sealed class QueueSettingsDto
     public bool? AnnounceQueuePosition { get; set; }
     public int? CallbackEnableTimeSec { get; set; }
     public string? CallbackPrefix { get; set; }
+    public bool? CallUsEnableChat { get; set; }
+    public bool? CallUsEnablePhone { get; set; }
+    public bool? CallUsEnableVideo { get; set; }
+    public string? CallUsRequirement { get; set; }
+    public string? ClickToCallId { get; set; }
     public bool? EnableIntro { get; set; }
     public string? GreetingFile { get; set; }
     public string? IntroFile { get; set; }
@@ -114,6 +119,8 @@ public sealed class QueueSettingsDto
     public List<string> NotifyCodes { get; set; } = [];
     public bool? ResetStatisticsScheduleEnabled { get; set; }
     public QueueResetStatisticsScheduleDto? ResetQueueStatisticsSchedule { get; set; }
+    public string? TranscriptionMode { get; set; }
+    public string? TypeOfChatOwnershipType { get; set; }
     public QueueRouteDto? BreakRoute { get; set; }
     public QueueRouteDto? HolidaysRoute { get; set; }
     public QueueRouteDto? OutOfOfficeRoute { get; set; }

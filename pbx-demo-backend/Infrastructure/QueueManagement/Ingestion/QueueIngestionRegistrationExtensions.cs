@@ -72,13 +72,13 @@ public sealed class QueueIngestionOptions
     public int WorkerStartupDelaySeconds { get; set; } = 3;
 
     public int ActiveCallsPollingIntervalSeconds { get; set; } = 5;
-    public int ActiveCallsTop { get; set; } = 500;
+    public int ActiveCallsTop { get; set; } = 100;
     public int ActiveCallsMissingCompletionLookbackMinutes { get; set; } = 240;
 
     public int CallHistoryReconciliationIntervalSeconds { get; set; } = 60;
     public int CallLogReconciliationIntervalSeconds { get; set; } = 120;
     public int ReconciliationLookbackMinutes { get; set; } = 30;
-    public int ReconciliationPageSize { get; set; } = 500;
+    public int ReconciliationPageSize { get; set; } = 100;
     public List<string> CallLogFunctionPaths { get; set; } = [];
 
     public int InboxPollingIntervalSeconds { get; set; } = 2;
@@ -108,4 +108,3 @@ internal static class QueueBatch5IngestionOptionsExtensions
     public static TimeSpan GetReconciliationLookback(this QueueIngestionOptions options)
         => TimeSpan.FromMinutes(Math.Max(1, options.ReconciliationLookbackMinutes));
 }
-
