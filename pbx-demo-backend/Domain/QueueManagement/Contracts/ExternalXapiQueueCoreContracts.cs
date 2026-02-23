@@ -224,6 +224,7 @@ public sealed class XapiPbxQueueDto
     public string? GreetingFile { get; set; }
     public List<XapiPbxUserGroupProjectionDto>? Groups { get; set; }
     public XapiPbxRouteDto? HolidaysRoute { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int Id { get; set; }
     public string? IntroFile { get; set; }
     public bool? IsRegistered { get; set; }

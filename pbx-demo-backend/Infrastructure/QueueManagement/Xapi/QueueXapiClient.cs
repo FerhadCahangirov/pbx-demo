@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using CallControl.Api.Domain;
 using Microsoft.Extensions.Options;
 using pbx_demo_backend.Domain.QueueManagement.Contracts;
@@ -52,11 +53,42 @@ public sealed class QueueXapiClient : IQueueXapiClient
         }
     }
 
-    public Task<XapiPbxQueueDto> CreateQueueAsync(XapiPbxQueueDto request, CancellationToken ct)
-        => SendJsonAsync<XapiPbxQueueDto>(HttpMethod.Post, "/Queues", request, ct);
+    public async Task<XapiPbxQueueDto> CreateQueueAsync(XapiPbxQueueDto request, CancellationToken ct)
+    {
+        try
+        {
+            return await SendJsonAsync<XapiPbxQueueDto>(HttpMethod.Post, "/Queues", request, ct);
+        }
+        catch (BadRequestException ex) when (ShouldRetryWithDeltaEnvelope(ex))
+        {
+            _logger.LogInformation(
+                "3CX XAPI /Queues POST rejected raw payload with a delta validation error; retrying with delta wrapper.");
+            return await SendJsonAsync<XapiPbxQueueDto>(
+                HttpMethod.Post,
+                "/Queues",
+                new XapiDeltaEnvelope<XapiPbxQueueDto>(request),
+                ct);
+        }
+    }
 
-    public Task UpdateQueueAsync(int queueId, XapiPbxQueueDto request, CancellationToken ct)
-        => SendNoContentAsync(HttpMethod.Patch, $"/Queues({queueId})", request, ifMatch: null, ct);
+    public async Task UpdateQueueAsync(int queueId, XapiPbxQueueDto request, CancellationToken ct)
+    {
+        try
+        {
+            await SendNoContentAsync(HttpMethod.Patch, $"/Queues({queueId})", request, ifMatch: null, ct);
+        }
+        catch (BadRequestException ex) when (ShouldRetryWithDeltaEnvelope(ex))
+        {
+            _logger.LogInformation(
+                "3CX XAPI /Queues PATCH rejected raw payload with a delta validation error; retrying with delta wrapper.");
+            await SendNoContentAsync(
+                HttpMethod.Patch,
+                $"/Queues({queueId})",
+                new XapiDeltaEnvelope<XapiPbxQueueDto>(request),
+                ifMatch: null,
+                ct);
+        }
+    }
 
     public Task DeleteQueueAsync(int queueId, string? ifMatch, CancellationToken ct)
         => SendNoContentAsync(HttpMethod.Delete, $"/Queues({queueId})", payload: null, ifMatch, ct);
@@ -288,8 +320,28 @@ public sealed class QueueXapiClient : IQueueXapiClient
         return new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true,
-            PropertyNamingPolicy = null
+            PropertyNamingPolicy = null,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
         };
+    }
+
+    private static bool ShouldRetryWithDeltaEnvelope(BadRequestException ex)
+    {
+        var message = ex.Message ?? string.Empty;
+        return message.Contains("delta", StringComparison.OrdinalIgnoreCase)
+            && message.Contains("required", StringComparison.OrdinalIgnoreCase)
+            && message.Contains("/Queues", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private sealed class XapiDeltaEnvelope<T>
+    {
+        public XapiDeltaEnvelope(T delta)
+        {
+            Delta = delta;
+        }
+
+        [JsonPropertyName("delta")]
+        public T Delta { get; }
     }
 
 }

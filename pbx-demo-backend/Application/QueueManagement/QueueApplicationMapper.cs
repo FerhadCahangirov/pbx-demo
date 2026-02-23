@@ -144,8 +144,19 @@ public sealed class QueueApplicationMapper
         };
 
         ApplySettingsToXapi(xapi, request.Settings);
-        xapi.Agents = MapAgentsToXapi(request.Agents);
-        xapi.Managers = MapManagersToXapi(request.Managers);
+
+        var agents = MapAgentsToXapi(request.Agents);
+        if (agents.Count > 0)
+        {
+            xapi.Agents = agents;
+        }
+
+        var managers = MapManagersToXapi(request.Managers);
+        if (managers.Count > 0)
+        {
+            xapi.Managers = managers;
+        }
+
         return xapi;
     }
 
