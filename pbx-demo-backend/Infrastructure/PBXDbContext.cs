@@ -1,11 +1,12 @@
 using CallControl.Api.Domain;
 using Microsoft.EntityFrameworkCore;
+using pbx_demo_backend.Domain.QueueManagement.Contracts;
 
 namespace CallControl.Api.Infrastructure;
 
-public sealed class SoftphoneDbContext : DbContext
+public class PBXDbContext : DbContext
 {
-    public SoftphoneDbContext(DbContextOptions<SoftphoneDbContext> options)
+    public PBXDbContext(DbContextOptions options)
         : base(options)
     {
     }
@@ -15,6 +16,25 @@ public sealed class SoftphoneDbContext : DbContext
     public DbSet<AppDepartmentMembershipEntity> DepartmentMemberships => Set<AppDepartmentMembershipEntity>();
     public DbSet<AppCallCdrEntity> CallCdrs => Set<AppCallCdrEntity>();
     public DbSet<AppCallCdrStatusHistoryEntity> CallCdrStatusHistory => Set<AppCallCdrStatusHistoryEntity>();
+
+    public DbSet<QueueEntity> Queues => Set<QueueEntity>();
+    public DbSet<QueueSettingsEntity> QueueSettings => Set<QueueSettingsEntity>();
+    public DbSet<ExtensionEntity> Extensions => Set<ExtensionEntity>();
+    public DbSet<QueueAgentEntity> QueueAgents => Set<QueueAgentEntity>();
+    public DbSet<QueueScheduleEntity> QueueSchedules => Set<QueueScheduleEntity>();
+    public DbSet<QueueWebhookMappingEntity> QueueWebhookMappings => Set<QueueWebhookMappingEntity>();
+
+    public DbSet<QueueCallEntity> QueueCalls => Set<QueueCallEntity>();
+    public DbSet<QueueCallEventEntity> QueueCallEvents => Set<QueueCallEventEntity>();
+    public DbSet<QueueCallHistoryEntity> QueueCallHistory => Set<QueueCallHistoryEntity>();
+    public DbSet<QueueAgentActivityEntity> QueueAgentActivities => Set<QueueAgentActivityEntity>();
+    public DbSet<QueueWaitingSnapshotEntity> QueueWaitingSnapshots => Set<QueueWaitingSnapshotEntity>();
+
+    public DbSet<QueueAnalyticsBucketHourEntity> QueueAnalyticsBucketHours => Set<QueueAnalyticsBucketHourEntity>();
+    public DbSet<QueueAnalyticsBucketDayEntity> QueueAnalyticsBucketDays => Set<QueueAnalyticsBucketDayEntity>();
+
+    public DbSet<OutboxMessageEntity> OutboxMessages => Set<OutboxMessageEntity>();
+    public DbSet<XapiSyncCheckpointEntity> XapiSyncCheckpoints => Set<XapiSyncCheckpointEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -129,5 +149,7 @@ public sealed class SoftphoneDbContext : DbContext
                 .HasForeignKey(v => v.CallCdrId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
+
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(PBXDbContext).Assembly);
     }
 }

@@ -2,6 +2,7 @@ using System.Text;
 using CallControl.Api.Domain;
 using CallControl.Api.Hubs;
 using CallControl.Api.Infrastructure;
+using CallControl.Api.Infrastructure.QueueManagement;
 using CallControl.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -19,7 +20,7 @@ builder.Services.AddSignalR(options =>
     options.EnableDetailedErrors = true;
 });
 builder.Services.AddHttpClient();
-builder.Services.AddDbContextFactory<SoftphoneDbContext>(options =>
+builder.Services.AddDbContextFactory<PBXDbContext>(options =>
 {
     var connectionString = builder.Configuration.GetConnectionString("SoftphoneDb")
         ?? "Server=(localdb)\\mssqllocaldb;Database=pbx-crm;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=true";
@@ -63,7 +64,9 @@ builder.Services
             {
                 var accessToken = context.Request.Query["access_token"];
                 var path = context.HttpContext.Request.Path;
-                if (!string.IsNullOrWhiteSpace(accessToken) && path.StartsWithSegments("/hubs/softphone"))
+                if (!string.IsNullOrWhiteSpace(accessToken)
+                    && (path.StartsWithSegments("/hubs/softphone")
+                        || path.StartsWithSegments("/hubs/queue")))
                 {
                     context.Token = accessToken;
                 }
@@ -77,6 +80,7 @@ builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("SupervisorOnly", policy => policy.RequireRole(AppUserRoles.Supervisor));
 });
+builder.Services.AddQueueManagementBatch7Module(builder.Configuration);
 
 builder.Services.AddSingleton<PasswordHasher>();
 builder.Services.AddSingleton<UserDirectoryService>();
@@ -103,6 +107,7 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.UseMiddleware<AppExceptionMiddleware>();
+app.UseQueueManagementBatch7Module();
 app.UseCors("SoftphoneCors");
 app.UseAuthentication();
 app.UseAuthorization();

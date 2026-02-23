@@ -6,9 +6,9 @@ namespace CallControl.Api.Services;
 
 public sealed class UserDirectoryService
 {
-    private readonly IDbContextFactory<SoftphoneDbContext> _dbContextFactory;
+    private readonly IDbContextFactory<PBXDbContext> _dbContextFactory;
 
-    public UserDirectoryService(IDbContextFactory<SoftphoneDbContext> dbContextFactory)
+    public UserDirectoryService(IDbContextFactory<PBXDbContext> dbContextFactory)
     {
         _dbContextFactory = dbContextFactory;
     }

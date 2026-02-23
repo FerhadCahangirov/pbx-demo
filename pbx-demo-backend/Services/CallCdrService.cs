@@ -6,9 +6,9 @@ namespace CallControl.Api.Services;
 
 public sealed class CallCdrService
 {
-    private readonly IDbContextFactory<SoftphoneDbContext> _dbContextFactory;
+    private readonly IDbContextFactory<PBXDbContext> _dbContextFactory;
 
-    public CallCdrService(IDbContextFactory<SoftphoneDbContext> dbContextFactory)
+    public CallCdrService(IDbContextFactory<PBXDbContext> dbContextFactory)
     {
         _dbContextFactory = dbContextFactory;
     }
@@ -370,7 +370,7 @@ public sealed class CallCdrService
     }
 
     private static async Task<AppCallCdrEntity?> ResolvePbxCallEntityAsync(
-        SoftphoneDbContext dbContext,
+        PBXDbContext dbContext,
         PbxCallCdrUpdate update,
         CancellationToken cancellationToken)
     {
@@ -415,7 +415,7 @@ public sealed class CallCdrService
     }
 
     private static async Task AppendStatusHistoryIfNeededAsync(
-        SoftphoneDbContext dbContext,
+        PBXDbContext dbContext,
         AppCallCdrEntity call,
         string status,
         string eventType,

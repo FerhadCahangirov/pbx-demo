@@ -7,13 +7,13 @@ namespace CallControl.Api.Services;
 
 public sealed class DatabaseBootstrapper
 {
-    private readonly IDbContextFactory<SoftphoneDbContext> _dbContextFactory;
+    private readonly IDbContextFactory<PBXDbContext> _dbContextFactory;
     private readonly SoftphoneOptions _options;
     private readonly PasswordHasher _passwordHasher;
     private readonly ILogger<DatabaseBootstrapper> _logger;
 
     public DatabaseBootstrapper(
-        IDbContextFactory<SoftphoneDbContext> dbContextFactory,
+        IDbContextFactory<PBXDbContext> dbContextFactory,
         IOptions<SoftphoneOptions> options,
         PasswordHasher passwordHasher,
         ILogger<DatabaseBootstrapper> logger)
@@ -123,7 +123,7 @@ public sealed class DatabaseBootstrapper
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    private static Task EnsureCallCdrSchemaAsync(SoftphoneDbContext dbContext, CancellationToken cancellationToken)
+    private static Task EnsureCallCdrSchemaAsync(PBXDbContext dbContext, CancellationToken cancellationToken)
     {
         const string sql = """
 IF OBJECT_ID(N'[CallCdrs]', N'U') IS NULL

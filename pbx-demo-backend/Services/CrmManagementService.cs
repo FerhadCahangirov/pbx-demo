@@ -7,13 +7,13 @@ namespace CallControl.Api.Services;
 
 public sealed class CrmManagementService
 {
-    private readonly IDbContextFactory<SoftphoneDbContext> _dbContextFactory;
+    private readonly IDbContextFactory<PBXDbContext> _dbContextFactory;
     private readonly ThreeCxConfigurationClient _threeCxConfigurationClient;
     private readonly PasswordHasher _passwordHasher;
     private readonly ILogger<CrmManagementService> _logger;
 
     public CrmManagementService(
-        IDbContextFactory<SoftphoneDbContext> dbContextFactory,
+        IDbContextFactory<PBXDbContext> dbContextFactory,
         ThreeCxConfigurationClient threeCxConfigurationClient,
         PasswordHasher passwordHasher,
         ILogger<CrmManagementService> logger)
@@ -311,7 +311,7 @@ public sealed class CrmManagementService
                     request.DepartmentRoles,
                     cancellationToken);
             }
-
+             
             if (!string.IsNullOrWhiteSpace(request.ClickToCallId))
             {
                 await ValidateFriendlyUrlInternalAsync(
@@ -757,7 +757,7 @@ public sealed class CrmManagementService
     }
 
     private static async Task<Dictionary<int, AppDepartmentEntity>> ResolveDepartmentsAsync(
-        SoftphoneDbContext dbContext,
+        PBXDbContext dbContext,
         IReadOnlyList<CrmUserDepartmentRoleRequest> requestedRoles,
         CancellationToken cancellationToken)
     {
