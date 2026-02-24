@@ -46,7 +46,7 @@ public sealed class QueueEventInboxProcessorWorker : BackgroundService
 
                 while (!stoppingToken.IsCancellationRequested)
                 {
-                    var count = await dispatcher.DispatchNextBatchAsync(Guid.Empty, stoppingToken);
+                    var count = await dispatcher.DispatchNextBatchAsync(stoppingToken);
                     if (count <= 0 || count < Math.Max(1, options.InboxBatchSize))
                     {
                         break;

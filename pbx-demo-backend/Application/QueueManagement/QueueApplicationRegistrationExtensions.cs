@@ -62,6 +62,7 @@ public static class QueueApplicationRegistrationExtensions
         services.TryAddScoped<IQueueOutboxSignalrPublisher, QueueOutboxSignalrPublisher>();
         services.TryAddScoped<QueueOutboxSignalrPublisher>();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, QueueAnalyticsPreAggregationWorker>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, QueueOutboxSignalrPublisherWorker>());
 
         services.TryAddScoped<IQueueService, QueueService>();
         services.TryAddScoped<IQueueLiveStateService, QueueLiveStateService>();

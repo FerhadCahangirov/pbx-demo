@@ -24,7 +24,7 @@ public sealed class QueueEventOrderingDispatcher
         _logger = logger;
     }
 
-    public async Task<int> DispatchNextBatchAsync(Guid tenantId, CancellationToken ct)
+    public async Task<int> DispatchNextBatchAsync(CancellationToken ct)
     {
         var options = _optionsMonitor.CurrentValue;
         var nowUtc = DateTimeOffset.UtcNow;
@@ -63,7 +63,7 @@ public sealed class QueueEventOrderingDispatcher
                 }
 
                 ct.ThrowIfCancellationRequested();
-                var success = await ProcessSingleEventAsync(item, tenantId, options, nowUtc, ct);
+                var success = await ProcessSingleEventAsync(item, options, nowUtc, ct);
                 processedCount++;
 
                 if (!success)
@@ -78,7 +78,6 @@ public sealed class QueueEventOrderingDispatcher
 
     private async Task<bool> ProcessSingleEventAsync(
         QueueCallEventEntity item,
-        Guid tenantId,
         QueueIngestionOptions options,
         DateTimeOffset nowUtc,
         CancellationToken ct)
@@ -127,8 +126,7 @@ public sealed class QueueEventOrderingDispatcher
             {
                 _logger.LogError(
                     ex,
-                    "Queue event moved to dead-letter. Tenant={TenantId}, EventId={EventId}, OrderingKey={OrderingKey}, Attempts={Attempts}.",
-                    tenantId,
+                    "Queue event moved to dead-letter. EventId={EventId}, OrderingKey={OrderingKey}, Attempts={Attempts}.",
                     item.Id,
                     item.OrderingKey,
                     item.ProcessingAttemptCount);
@@ -137,8 +135,7 @@ public sealed class QueueEventOrderingDispatcher
             {
                 _logger.LogWarning(
                     ex,
-                    "Queue event processing failed. Tenant={TenantId}, EventId={EventId}, OrderingKey={OrderingKey}, Attempt={Attempt}, NextAttemptAtUtc={NextAttemptAtUtc}.",
-                    tenantId,
+                    "Queue event processing failed. EventId={EventId}, OrderingKey={OrderingKey}, Attempt={Attempt}, NextAttemptAtUtc={NextAttemptAtUtc}.",
                     item.Id,
                     item.OrderingKey,
                     item.ProcessingAttemptCount,

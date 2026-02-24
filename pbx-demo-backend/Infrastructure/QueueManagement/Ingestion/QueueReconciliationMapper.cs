@@ -448,7 +448,7 @@ internal static class QueueHistorySourceTypes
 
 internal sealed class QueueActiveCallObservedPayload
 {
-    
+    public long? QueueIdHint { get; set; }
     public int PbxCallId { get; set; }
     public string CorrelationKey { get; set; } = string.Empty;
     public string? Status { get; set; }

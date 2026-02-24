@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 using CallControl.Api.Domain;
 using CallControl.Api.Infrastructure;
+using CallControl.Api.Infrastructure.QueueManagement.Ingestion;
 using Microsoft.Extensions.Options;
 
 namespace CallControl.Api.Services;
@@ -14,6 +15,7 @@ public sealed class CallManager
     private readonly ThreeCxClientFactory _threeCxClientFactory;
     private readonly EventDispatcher _eventDispatcher;
     private readonly CallCdrService _callCdrService;
+    private readonly QueueThreeCxWebSocketIngestionBridge _queueWebSocketIngestionBridge;
     private readonly ILogger<CallManager> _logger;
     private readonly JsonSerializerOptions _jsonOptions = new()
     {
@@ -27,6 +29,7 @@ public sealed class CallManager
         ThreeCxClientFactory threeCxClientFactory,
         EventDispatcher eventDispatcher,
         CallCdrService callCdrService,
+        QueueThreeCxWebSocketIngestionBridge queueWebSocketIngestionBridge,
         ILogger<CallManager> logger)
     {
         _options = options.Value;
@@ -35,6 +38,7 @@ public sealed class CallManager
         _threeCxClientFactory = threeCxClientFactory;
         _eventDispatcher = eventDispatcher;
         _callCdrService = callCdrService;
+        _queueWebSocketIngestionBridge = queueWebSocketIngestionBridge;
         _logger = logger;
     }
 
@@ -1085,13 +1089,13 @@ public sealed class CallManager
                     return;
                 }
 
-                await ProcessUpsertAsync(sessionId, session, op, payload.Value);
+                await ProcessUpsertAsync(sessionId, session, op, wsEvent, payload.Value);
                 return;
             }
 
             if (wsEvent.Event.EventType == ThreeCxEventType.Remove)
             {
-                await ProcessRemoveAsync(sessionId, session, op);
+                await ProcessRemoveAsync(sessionId, session, op, wsEvent);
             }
         }
         catch (Exception ex)
@@ -1100,11 +1104,13 @@ public sealed class CallManager
         }
     }
 
-    private async Task ProcessUpsertAsync(string sessionId, SoftphoneSession session, EntityOperation op, JsonElement payload)
+    private async Task ProcessUpsertAsync(string sessionId, SoftphoneSession session, EntityOperation op, ThreeCxWsEvent wsEvent, JsonElement payload)
     {
         SessionSnapshotResponse snapshot;
         SoftphoneEventEnvelope? envelope = null;
         PbxCallCdrUpdate? cdrUpdate = null;
+        ThreeCxParticipant? participantForQueueIngestion = null;
+        SoftphoneCallView? callViewForQueueIngestion = null;
 
         await session.Gate.WaitAsync();
         try
@@ -1125,6 +1131,8 @@ public sealed class CallManager
                 {
                     dnInfo.Participants[participantId] = participant;
                     var callView = ApplyParticipantUpsertLocked(session, op.Dn, participant);
+                    participantForQueueIngestion = participant;
+                    callViewForQueueIngestion = callView;
                     envelope = new SoftphoneEventEnvelope
                     {
                         EventType = MapCallEventType(participant.Status),
@@ -1193,13 +1201,20 @@ public sealed class CallManager
 
         await _eventDispatcher.PublishSnapshotAsync(sessionId, snapshot);
         await PersistPbxCdrUpdateAsync(cdrUpdate);
+        await _queueWebSocketIngestionBridge.TryIngestParticipantUpsertAsync(
+            session,
+            op,
+            wsEvent,
+            participantForQueueIngestion,
+            callViewForQueueIngestion);
     }
 
-    private async Task ProcessRemoveAsync(string sessionId, SoftphoneSession session, EntityOperation op)
+    private async Task ProcessRemoveAsync(string sessionId, SoftphoneSession session, EntityOperation op, ThreeCxWsEvent wsEvent)
     {
         SessionSnapshotResponse snapshot;
         SoftphoneEventEnvelope? envelope = null;
         PbxCallCdrUpdate? cdrUpdate = null;
+        SoftphoneCallView? removedCallForQueueIngestion = null;
 
         await session.Gate.WaitAsync();
         try
@@ -1214,6 +1229,7 @@ public sealed class CallManager
             {
                 dnInfo.Participants.Remove(participantId);
                 var removed = RemoveParticipantLocked(session, op.Dn, participantId);
+                removedCallForQueueIngestion = removed;
                 if (removed is not null)
                 {
                     envelope = new SoftphoneEventEnvelope
@@ -1274,6 +1290,11 @@ public sealed class CallManager
 
         await _eventDispatcher.PublishSnapshotAsync(sessionId, snapshot);
         await PersistPbxCdrUpdateAsync(cdrUpdate);
+        await _queueWebSocketIngestionBridge.TryIngestParticipantRemovedAsync(
+            session,
+            op,
+            wsEvent,
+            removedCallForQueueIngestion);
     }
 
     private static string MapCallEventType(string? status)

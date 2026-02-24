@@ -45,6 +45,7 @@ public static class QueueIngestionRegistrationExtensions
     {
         services.TryAddSingleton<QueueEventIdempotencyKeyFactory>();
         services.TryAddSingleton<IXapiQueueRealtimeAdapter, XapiQueueRealtimeAdapterPlaceholder>();
+        services.TryAddSingleton<QueueThreeCxWebSocketIngestionBridge>();
 
         services.TryAddScoped<QueueReconciliationMapper>();
         services.TryAddScoped<QueueCallLifecycleManager>();

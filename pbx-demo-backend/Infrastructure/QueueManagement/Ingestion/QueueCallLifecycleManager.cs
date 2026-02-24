@@ -137,6 +137,7 @@ public sealed class QueueCallLifecycleManager
             CorrelationKey = payload.CorrelationKey,
             EventAtUtc = eventAtUtc,
             ObservedAtUtc = payload.ObservedAtUtc == default ? eventAtUtc : payload.ObservedAtUtc,
+            QueueIdHint = payload.QueueIdHint,
             PbxCallId = payload.PbxCallId,
             CallerNumber = payload.Caller,
             CalleeNumber = payload.Callee,
@@ -150,6 +151,7 @@ public sealed class QueueCallLifecycleManager
                 {
                     TransitionType = transitionType,
                     OccurredAtUtc = eventAtUtc,
+                    QueueId = payload.QueueIdHint,
                     WaitOrder = payload.WaitOrder,
                     Source = inboxEvent.Source,
                     SequenceNo = inboxEvent.Id,

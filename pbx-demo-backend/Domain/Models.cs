@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using CallControl.Api.Services;
 
@@ -401,4 +402,7 @@ public sealed class ThreeCxWsEventBody
 
     [JsonPropertyName("entity")]
     public string Entity { get; set; } = string.Empty;
+
+    [JsonPropertyName("attached_data")]
+    public JsonElement? AttachedData { get; set; }
 }

@@ -31,6 +31,7 @@ public sealed class QueueLiveSnapshotBuilder
             .Where(x => x.QueueId == queueId)
             .Where(x =>
                 x.CurrentStatus != QueueCallLifecycleStatus.Completed &&
+                x.CurrentStatus != QueueCallLifecycleStatus.Missed &&
                 x.CurrentStatus != QueueCallLifecycleStatus.Abandoned)
             .OrderBy(x => x.QueuedAtUtc)
             .ThenBy(x => x.Id)
@@ -287,4 +288,3 @@ public sealed class QueueLiveSnapshotBuilder
         };
     }
 }
-
